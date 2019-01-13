@@ -85,7 +85,7 @@ def width_divide_heigth(points_array, num = 3):
     width = []
     for i in range(num):
         width.append(points_array[16-i, 0] - points_array[i, 0])
-    print(width)
+    #print(width)
     wid = sum(width)/num
     # wid = (points_array[:, 0].max() - points_array[:, 0].min())
     height = (points_array[:, 1].max() - points_array[:, 1].min())
@@ -153,7 +153,28 @@ def change_size(points_array):
 def move_to_center(points_array):
     cen = points_array.sum(axis = 0) / points_array.shape[0]
     return points_array - cen
-
+def distance1(array0,array1):
+    p1=np.max(array0,axis=0)
+    p2=np.min(array0,axis=0)
+    p1=(p1-p2)
+    S=p1[0]*p1[1]
+    array0=array0/np.sqrt(S)
+    
+    
+    m=array0.shape[0]
+    
+    xy0_2=np.sum(np.power(array0,2),axis=0,keepdims=True)/m
+    xy0=np.sum(array0,axis=0,keepdims=True)/m
+    
+    xy1_2=np.sum(np.power(array1,2),axis=0,keepdims=True)/m
+    xy1=np.sum(array1,axis=0,keepdims=True)/m
+    
+    xy01=np.sum(array0*array1,axis=0,keepdims=True)/m
+    
+    temp=(xy0_2*xy1_2-np.power(xy01,2)-\
+          np.power(xy0*xy1_2-xy1*xy01,2)/(xy1_2-np.power(xy1,2)))/xy1_2
+    d=np.sum(temp)
+    return np.sqrt(d)
 def distance(points_array_1, points_array_2):
     # 欧式距离
     # return np.sqrt(np.sum(np.power(points_array_1-points_array_2, 2))/points_array_1.shape[0])
@@ -189,6 +210,14 @@ def distance_matrix(points_array):
 def get_changed_points_array(face_path):
     return change_size(move_to_center(get_points_array(face_path)))
 
+def get_face_edge_points(face_points, include_nose = False):
+    if(include_nose):
+        f = np.zeros((26, 2))
+        f[0:17, :] = face_points[0:17, :]
+        f[17:26, :] = face_points[27:36, :]
+        return f
+    else:
+        return face_points[0:17, :]
 def face_distance(face_path_1, face_path_2):
     face_1 = get_changed_points_array(face_path_1)
     face_2 = get_changed_points_array(face_path_2)
@@ -199,21 +228,72 @@ def face_distance(face_path_1, face_path_2):
     f2[0:17, :] = face_2[0:17, :]
     f2[17:26, :] = face_2[27:36, :]
 
-    print(distance_matrix(f1, f2))
+    print(distance(f1, f2))
     #show_two_points(f1, f2)
+def evaluate(points_array1,points_array2,weight_list):
+    f1=get_face_edge_points(points_array1,include_nose = False)
+    f2=get_face_edge_points(points_array2,include_nose = False)
+    
+    atrributes1=[]
+    atrributes2=[]
+    #check_gradient
+    atrributes1.append(check_gradient(f1))
+    atrributes2.append(check_gradient(f2))
+    
+    atrributes1.append(jaw_curvature(f1))
+    atrributes2.append(jaw_curvature(f2))
+    
+    atrributes1.append(width_divide_heigth(f1, num = 3))
+    atrributes2.append(width_divide_heigth(f2, num = 3))
+    
+    a1=np.array(atrributes1).reshape(-1,1)
+    a2=np.array(atrributes2).reshape(-1,1)
+    
+    a1=a1/np.array([[20*0.15],[0.276],[0.2*0.47]])
+    a2=a2/np.array([[20*0.15],[0.276],[0.2*0.47]])
+    w=np.array(weight_list).reshape(-1,1)
+    
+    print(a1-a2)
+    return np.sum(np.multiply(np.power(a1-a2,2),w)),np.power(a1-a2,2),np.multiply(np.power(a1-a2,2),w), np.abs(a1-a2)
 
-    return distance(f1, f2)
+#def recommand():
+    
+user_face_path='images/17.jpg'
+face_points0=get_changed_points_array(user_face_path)
 
+L=[]
+WEIGHT=[0.3,0.4,0.3]
+#ave = np.zeros((3, 1))
 
-user_face_path='images/1.jpg'
-for i in range(10):
+path='images\\man\\*.jpg'
+collections=io.ImageCollection(path)
+print(collections)
+
+for i in ['images\\man\\u=172972933,2291792799&fm=26&gp=0.jpg', 'images\\man\\u=283846838,3017887413&fm=26&gp=0.jpg', 'images\\man\\u=1301088983,636709627&fm=26&gp=0.jpg', 'images\\man\\u=1627006444,3336284082&fm=26&gp=0.jpg', 'images\\man\\u=2506157847,2674135355&fm=26&gp=0.jpg', 'images\\man\\u=2623628823,3324713832&fm=26&gp=0.jpg', 'images\\man\\u=2932027764,1369049847&fm=26&gp=0.jpg', 'images\\man\\u=3123600464,1058750482&fm=26&gp=0.jpg', 'images\\man\\u=3568392546,729156733&fm=11&gp=0.jpg', 'images\\man\\u=3920783153,427755879&fm=26&gp=0.jpg', 'images\\man\\u=3991619722,3767876164&fm=26&gp=0.jpg', 'images\\man\\u=4200512207,3956956204&fm=26&gp=0.jpg']:
     print("===================",i,"======================")
-    face_path='images/'+ str(i)+ ".jpg"
+    face_path=i
+    
     face_points=get_changed_points_array(face_path)
-    print(check_gradient(face_points))
-    print(jaw_curvature(face_points))
-    print(width_divide_heigth(face_points))
     
-    
+#    print(check_gradient(face_points))
+#    print(jaw_curvature(face_points))
+#    print(width_divide_heigth(face_points))
+    e1,e2,e3, e4=evaluate(face_points0,face_points,WEIGHT)
+#    ave = ave + e4
+    L.append([e1, i])
+#    print(e1)
+#    print(e2)
+#    print(e3)
+#    
+    #show_two_points(get_face_edge_points(face_points0),get_face_edge_points(face_points))
+    #face_distance(user_face_path, face_path)
     #try_model(face_path)
-    print(i, face_distance(user_face_path, face_path))
+
+L.sort()
+i=0
+for e in L:
+    print("====================", i, "======================")
+    print(e[0])
+    io.imshow(e[1])
+    io.show()
+    i+=1

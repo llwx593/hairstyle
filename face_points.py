@@ -228,7 +228,7 @@ def face_distance(face_path_1, face_path_2):
     f2[0:17, :] = face_2[0:17, :]
     f2[17:26, :] = face_2[27:36, :]
 
-    print(distance(f1, f2))
+    return distance(f1, f2)
     #show_two_points(f1, f2)
 def evaluate(points_array1,points_array2,weight_list):
     f1=get_face_edge_points(points_array1,include_nose = False)
@@ -254,7 +254,36 @@ def evaluate(points_array1,points_array2,weight_list):
     w=np.array(weight_list).reshape(-1,1)
     
     print(a1-a2)
-    return np.sum(np.multiply(np.power(a1-a2,2),w)),np.power(a1-a2,2),np.multiply(np.power(a1-a2,2),w), np.abs(a1-a2)
+    return np.sum(np.multiply(np.power(a1-a2,2),w))
+
+def evaluate2(points_array1,points_array2,weight_list):
+    f1=get_face_edge_points(points_array1,include_nose = False)
+    f2=get_face_edge_points(points_array2,include_nose = False)
+    
+    atrributes1=[]
+    atrributes2=[]
+    #check_gradient
+    atrributes1.append(check_gradient(f1))
+    atrributes2.append(check_gradient(f2))
+    
+    atrributes1.append(jaw_curvature(f1))
+    atrributes2.append(jaw_curvature(f2))
+    
+    atrributes1.append(width_divide_heigth(f1, num = 3))
+    atrributes2.append(width_divide_heigth(f2, num = 3))
+    
+    a1=np.array(atrributes1).reshape(-1,1)
+    a2=np.array(atrributes2).reshape(-1,1)
+    
+    a1=a1/np.array([[20],[1],[0.2]])
+    a2=a2/np.array([[20],[1],[0.2]])
+    w=np.array(weight_list).reshape(-1,1)
+    
+    delta_square=np.abs(a1-a2)**2
+    dist_square=distance(f1,f2)**2
+    delta_square=np.append(delta_square,[[dist_square]],axis=0)
+    
+    return np.sum(np.multiply(delta_square,w)),delta_square
 
 #def recommand():
     
@@ -262,38 +291,52 @@ user_face_path='images/17.jpg'
 face_points0=get_changed_points_array(user_face_path)
 
 L=[]
-WEIGHT=[0.3,0.4,0.3]
-#ave = np.zeros((3, 1))
+#脸颊角度 下巴曲率半径 脸部长宽比 distance
+WEIGHT=[0.2,0.4,0.2,0.2]
+#WEIGHT=[0.3,0.4,0.3]
 
 path='images\\man\\*.jpg'
 collections=io.ImageCollection(path)
 print(collections)
 
+draw_1 = []
+draw_2 = []
+delta_square_all=[]
 for i in ['images\\man\\u=172972933,2291792799&fm=26&gp=0.jpg', 'images\\man\\u=283846838,3017887413&fm=26&gp=0.jpg', 'images\\man\\u=1301088983,636709627&fm=26&gp=0.jpg', 'images\\man\\u=1627006444,3336284082&fm=26&gp=0.jpg', 'images\\man\\u=2506157847,2674135355&fm=26&gp=0.jpg', 'images\\man\\u=2623628823,3324713832&fm=26&gp=0.jpg', 'images\\man\\u=2932027764,1369049847&fm=26&gp=0.jpg', 'images\\man\\u=3123600464,1058750482&fm=26&gp=0.jpg', 'images\\man\\u=3568392546,729156733&fm=11&gp=0.jpg', 'images\\man\\u=3920783153,427755879&fm=26&gp=0.jpg', 'images\\man\\u=3991619722,3767876164&fm=26&gp=0.jpg', 'images\\man\\u=4200512207,3956956204&fm=26&gp=0.jpg']:
     print("===================",i,"======================")
     face_path=i
     
     face_points=get_changed_points_array(face_path)
     
-#    print(check_gradient(face_points))
-#    print(jaw_curvature(face_points))
-#    print(width_divide_heigth(face_points))
-    e1,e2,e3, e4=evaluate(face_points0,face_points,WEIGHT)
-#    ave = ave + e4
-    L.append([e1, i])
-#    print(e1)
-#    print(e2)
-#    print(e3)
+    dist=face_distance(user_face_path,i)
+    draw_1.append(dist*25)
+
+    e,delta_square=evaluate2(face_points0,face_points,WEIGHT)
+    delta_square_all.append(delta_square)
+
+    L.append([e, i])
+    draw_2.append(e)
+    
 #    
     #show_two_points(get_face_edge_points(face_points0),get_face_edge_points(face_points))
     #face_distance(user_face_path, face_path)
     #try_model(face_path)
 
-L.sort()
-i=0
-for e in L:
-    print("====================", i, "======================")
-    print(e[0])
-    io.imshow(e[1])
-    io.show()
-    i+=1
+'''打印最后排名'''
+#L.sort()
+#i=0
+#for e in L:
+#    print("====================", i, "======================")
+#    print(e[0])
+#    io.imshow(e[1])
+#    io.show()
+#    i+=1
+
+#plt.plot(range(len(draw_1)), draw_1, "r")
+#plt.plot(range(len(draw_2)), draw_2, "b")
+#plt.show()
+    
+delta_square_all_array=np.array(delta_square_all).reshape(4,-1)
+print(delta_square_all_array.shape)
+s=np.sum(delta_square_all_array,axis=1,keepdims=True)/delta_square_all_array.shape[1]
+print(s)

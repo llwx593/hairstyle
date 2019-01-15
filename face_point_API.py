@@ -22,7 +22,7 @@ def get_4_distance_and_norm(attributes_list_1, attributes_list_2,
     distance_array[3, :] = np.array(fp.distance_with_distance_matrix(
         attributes_list_1[3], attributes_list_2[3]))
     distance_array = distance_array/(np.array(norm_k).reshape(distance_array.shape))
-    return distance_array
+    return np.abs(distance_array)
 
 def compare_face(attributes_list_1, attributes_list_2,
                  weight_list=[0.2, 0.4, 0.2, 0.2]):
@@ -34,13 +34,14 @@ def compare_face(attributes_list_1, attributes_list_2,
     w = np.array(weight_list).reshape(distance_array.shape)
     return np.sum(np.multiply(distance_array, w))
 
-path='images\\明星证件照\\*.jpg'
+path='images\\women\\*.jpg'
 collections=io.ImageCollection(path)
 atts = []
 for i in collections:
     atts.append(get_face_attributes_list(i))
-
-
+# np.random.seed(1)
+# l=np.random.permutation(range(40))
+atts = atts[0::2]
 dist= np.zeros((4, 1))
 count=0
 for i in range(len(atts)):

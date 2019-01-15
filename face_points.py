@@ -129,6 +129,17 @@ def show_two_points(points_array_1, points_array_2):
 
     plt.show()
 
+def get_points_array_with_image_array(image_array):
+    # 输入一个值域为(0,255)的图片像素矩阵,返回平移缩放后的特征点矩阵
+    dets = detector(image_array, 1)
+
+    for k, d in enumerate(dets):
+        shape = predictor(image_array, d)
+        landmark = np.matrix([[p.x, p.y] for p in shape.parts()])
+        return change_size(move_to_center(landmark))#只返回第一张脸
+    return None
+
+
 def get_points_array(image_path):
     
     img = io.imread(image_path)     # img 是一个图片像素矩阵，值域(0,255)
@@ -196,6 +207,10 @@ def distance(points_array_1, points_array_2):
     distance = np.sum(np.power(distance_matrix_1 - distance_matrix_2, 4))
     return np.sqrt(np.sqrt(distance))
 
+def distance_with_distance_matrix(distance_matrix_1, distance_matrix_2):
+    distance = np.sum(np.power(distance_matrix_1 - distance_matrix_2, 4))
+    return np.sqrt(np.sqrt(distance))
+
 def distance_matrix(points_array):
     ones = np.ones((1, points_array.shape[0]))
     x = (points_array[:, 0]).reshape(-1, 1)
@@ -230,6 +245,18 @@ def face_distance(face_path_1, face_path_2):
 
     return distance(f1, f2)
     #show_two_points(f1, f2)
+
+def get_3_attributes_list(points_array):
+    f = get_face_edge_points(points_array, include_nose=False)
+    atrributes = []
+    # check_gradient
+    atrributes.append(check_gradient(f))
+    atrributes.append(jaw_curvature(f))
+    atrributes.append(width_divide_heigth(points_array, num=3))
+    # print(atrributes)
+    return atrributes
+
+
 def evaluate(points_array1,points_array2,weight_list):
     f1=get_face_edge_points(points_array1,include_nose = False)
     f2=get_face_edge_points(points_array2,include_nose = False)
@@ -243,9 +270,9 @@ def evaluate(points_array1,points_array2,weight_list):
     atrributes1.append(jaw_curvature(f1))
     atrributes2.append(jaw_curvature(f2))
     
-    atrributes1.append(width_divide_heigth(f1, num = 3))
-    atrributes2.append(width_divide_heigth(f2, num = 3))
-    
+    atrributes1.append(width_divide_heigth(points_array1, num = 3))
+    atrributes2.append(width_divide_heigth(points_array2, num = 3))
+
     a1=np.array(atrributes1).reshape(-1,1)
     a2=np.array(atrributes2).reshape(-1,1)
     
@@ -253,13 +280,13 @@ def evaluate(points_array1,points_array2,weight_list):
     a2=a2/np.array([[20*0.15],[0.276],[0.2*0.47]])
     w=np.array(weight_list).reshape(-1,1)
     
-    print(a1-a2)
+
     return np.sum(np.multiply(np.power(a1-a2,2),w))
+
 
 def evaluate2(points_array1,points_array2,weight_list):
     f1=get_face_edge_points(points_array1,include_nose = False)
     f2=get_face_edge_points(points_array2,include_nose = False)
-    
     atrributes1=[]
     atrributes2=[]
     #check_gradient
@@ -269,14 +296,16 @@ def evaluate2(points_array1,points_array2,weight_list):
     atrributes1.append(jaw_curvature(f1))
     atrributes2.append(jaw_curvature(f2))
     
-    atrributes1.append(width_divide_heigth(f1, num = 3))
-    atrributes2.append(width_divide_heigth(f2, num = 3))
-    
+    atrributes1.append(width_divide_heigth(points_array1, num = 3))
+    atrributes2.append(width_divide_heigth(points_array2, num = 3))
+    # print(atrributes1)
     a1=np.array(atrributes1).reshape(-1,1)
     a2=np.array(atrributes2).reshape(-1,1)
     
     a1=a1/np.array([[20],[1],[0.2]])
-    a2=a2/np.array([[20],[1],[0.2]v])
+    a2=a2/np.array([[20],[1],[0.2]])
+    print(a1 - a2)
+    print(distance(points_array1, points_array2))
     w=np.array(weight_list).reshape(-1,1)
     # 先弄一个平方之前的[a1-a2, distance], 然后确定一个[4,1]的系数，再平方放大
     delta_square=np.abs(a1-a2)**2
@@ -284,60 +313,60 @@ def evaluate2(points_array1,points_array2,weight_list):
     delta_square=np.append(delta_square,[[dist_square]],axis=0) # shape = [4, 1] , numpy.ndarray
     
     return np.sum(np.multiply(delta_square,w)),delta_square    # 到时候要修改
-
-#def recommand():
-    
-user_face_path='images/17.jpg'
-face_points0=get_changed_points_array(user_face_path)
-
-L=[]
-#脸颊角度 下巴曲率半径 脸部长宽比 distance
-WEIGHT=[0.2,0.4,0.2,0.2]
-#WEIGHT=[0.3,0.4,0.3]
-
-path='images\\man\\*.jpg'
-collections=io.ImageCollection(path)
-print(collections)
-
-draw_1 = []
-draw_2 = []
-delta_square_all=[]
-for i in ['images\\man\\u=172972933,2291792799&fm=26&gp=0.jpg', 'images\\man\\u=283846838,3017887413&fm=26&gp=0.jpg', 'images\\man\\u=1301088983,636709627&fm=26&gp=0.jpg', 'images\\man\\u=1627006444,3336284082&fm=26&gp=0.jpg', 'images\\man\\u=2506157847,2674135355&fm=26&gp=0.jpg', 'images\\man\\u=2623628823,3324713832&fm=26&gp=0.jpg', 'images\\man\\u=2932027764,1369049847&fm=26&gp=0.jpg', 'images\\man\\u=3123600464,1058750482&fm=26&gp=0.jpg', 'images\\man\\u=3568392546,729156733&fm=11&gp=0.jpg', 'images\\man\\u=3920783153,427755879&fm=26&gp=0.jpg', 'images\\man\\u=3991619722,3767876164&fm=26&gp=0.jpg', 'images\\man\\u=4200512207,3956956204&fm=26&gp=0.jpg']:
-    print("===================",i,"======================")
-    face_path=i
-    
-    face_points=get_changed_points_array(face_path)
-    
-    dist=face_distance(user_face_path,i)
-    draw_1.append(dist*25)
-
-    e,delta_square=evaluate2(face_points0,face_points,WEIGHT)
-    delta_square_all.append(delta_square)
-
-    L.append([e, i])
-    draw_2.append(e)
-    
-#    
-    #show_two_points(get_face_edge_points(face_points0),get_face_edge_points(face_points))
-    #face_distance(user_face_path, face_path)
-    #try_model(face_path)
-
-'''打印最后排名'''
-#L.sort()
-#i=0
-#for e in L:
-#    print("====================", i, "======================")
-#    print(e[0])
-#    io.imshow(e[1])
-#    io.show()
-#    i+=1
-
-#plt.plot(range(len(draw_1)), draw_1, "r")
-#plt.plot(range(len(draw_2)), draw_2, "b")
-#plt.show()
-    
-delta_square_all_array=np.array(delta_square_all).reshape(4,-1)
-print(delta_square_all_array.shape)
-s=np.sum(delta_square_all_array,axis=1,keepdims=True)/delta_square_all_array.shape[1]
-print(s)
-
+#
+# #def recommand():
+#
+# user_face_path='images\\man\\u=172972933,2291792799&fm=26&gp=0.jpg'
+# face_points0=get_changed_points_array(user_face_path)
+#
+# L=[]
+# #脸颊角度 下巴曲率半径 脸部长宽比 distance
+# WEIGHT=[0.2,0.4,0.2,0.2]
+# #WEIGHT=[0.3,0.4,0.3]
+#
+# path='images\\man\\*.jpg'
+# collections=io.ImageCollection(path)
+# print(collections)
+#
+# draw_1 = []
+# draw_2 = []
+# delta_square_all=[]
+# for i in ['images\\man\\u=172972933,2291792799&fm=26&gp=0.jpg', 'images\\man\\u=283846838,3017887413&fm=26&gp=0.jpg', 'images\\man\\u=1301088983,636709627&fm=26&gp=0.jpg', 'images\\man\\u=1627006444,3336284082&fm=26&gp=0.jpg', 'images\\man\\u=2506157847,2674135355&fm=26&gp=0.jpg', 'images\\man\\u=2623628823,3324713832&fm=26&gp=0.jpg', 'images\\man\\u=2932027764,1369049847&fm=26&gp=0.jpg', 'images\\man\\u=3123600464,1058750482&fm=26&gp=0.jpg', 'images\\man\\u=3568392546,729156733&fm=11&gp=0.jpg', 'images\\man\\u=3920783153,427755879&fm=26&gp=0.jpg', 'images\\man\\u=3991619722,3767876164&fm=26&gp=0.jpg', 'images\\man\\u=4200512207,3956956204&fm=26&gp=0.jpg']:
+#     print("===================",i,"======================")
+#     face_path=i
+#
+#     face_points=get_changed_points_array(face_path)
+#
+#     dist=face_distance(user_face_path,i)
+#     draw_1.append(dist*25)
+#
+#     e,delta_square=evaluate2(face_points0,face_points,WEIGHT)
+#     delta_square_all.append(delta_square)
+#
+#     L.append([e, i])
+#     draw_2.append(e)
+#
+# #
+#     #show_two_points(get_face_edge_points(face_points0),get_face_edge_points(face_points))
+#     #face_distance(user_face_path, face_path)
+#     #try_model(face_path)
+#
+# '''打印最后排名'''
+# #L.sort()
+# #i=0
+# #for e in L:
+# #    print("====================", i, "======================")
+# #    print(e[0])
+# #    io.imshow(e[1])
+# #    io.show()
+# #    i+=1
+#
+# #plt.plot(range(len(draw_1)), draw_1, "r")
+# #plt.plot(range(len(draw_2)), draw_2, "b")
+# #plt.show()
+#
+# delta_square_all_array=np.array(delta_square_all).reshape(4,-1)
+# print(delta_square_all_array.shape)
+# s=np.sum(delta_square_all_array,axis=1,keepdims=True)/delta_square_all_array.shape[1]
+# print(s)
+#

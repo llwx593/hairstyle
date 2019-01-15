@@ -39,7 +39,6 @@ collections=io.ImageCollection(path)
 atts = []
 for i in collections:
     atts.append(get_face_attributes_list(i))
-count = 0
 
 
 dist= np.zeros((4, 1))

@@ -5,13 +5,16 @@ import numpy as np
 from skimage import io
 import matplotlib.pyplot as plt
 import math
+class NoFaceException(Exception):
+    def __init__(self, count):
+        self.count=count
 
 predictor_path = r"model\shape_predictor_68_face_landmarks.dat"
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
-def try_model0(faces_path):
+def try_model0(faces_point_array):
     win = dlib.image_window()
-    img = io.imread(faces_path)
+    img = faces_point_array
     
     win.clear_overlay()
     win.set_image(img)
@@ -21,10 +24,10 @@ def try_model0(faces_path):
     for k, d in enumerate(dets):
         shape = predictor(img, d)
         landmark = np.matrix([[p.x, p.y] for p in shape.parts()])
-        print("face_landmark:")
+        # print("face_landmark:")
         
-        print(landmark.shape)
-        print (landmark)  # 打印关键点矩阵
+        # print(landmark.shape)
+        #print (landmark)  # 打印关键点矩阵
         win.add_overlay(shape)  #绘制特征点
     dlib.hit_enter_to_continue()
     
@@ -129,15 +132,15 @@ def show_two_points(points_array_1, points_array_2):
 
     plt.show()
 
-def get_points_array_with_image_array(image_array):
+def get_points_array_with_image_array(image_array,count):
     # 输入一个值域为(0,255)的图片像素矩阵,返回平移缩放后的特征点矩阵
     dets = detector(image_array, 1)
-
+    if(len(dets)==0):
+        raise NoFaceException(count)
     for k, d in enumerate(dets):
         shape = predictor(image_array, d)
         landmark = np.matrix([[p.x, p.y] for p in shape.parts()])
         return change_size(move_to_center(landmark))#只返回第一张脸
-    return None
 
 
 def get_points_array(image_path):

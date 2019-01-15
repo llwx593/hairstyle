@@ -39,6 +39,11 @@ collections=io.ImageCollection(path)
 atts = []
 for i in collections:
     atts.append(get_face_attributes_list(i))
-
+count = 0
+d = np.zeros((4, 1))
 for i in range(len(atts)):
-    print(compare_face(atts[0], atts[i]))
+    for j in range(i+1, len(atts)):
+        count += 1
+        d = d + get_4_distance_and_norm(atts[i], atts[j])
+
+print(d/count)

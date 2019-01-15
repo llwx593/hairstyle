@@ -34,11 +34,23 @@ def compare_face(attributes_list_1, attributes_list_2,
     w = np.array(weight_list).reshape(distance_array.shape)
     return np.sum(np.multiply(distance_array, w))
 
-path='images\\man\\*.jpg'
+path='images\\明星证件照\\*.jpg'
 collections=io.ImageCollection(path)
 atts = []
 for i in collections:
     atts.append(get_face_attributes_list(i))
 
+dist= np.zeros((4, 1))
+count=0
 for i in range(len(atts)):
-    print(compare_face(atts[0], atts[i]))
+    for j in range(i+1,len(atts)):
+        count+=1
+        dist = dist + get_4_distance_and_norm(atts[i], atts[j])
+print(dist/count)
+'''
+[[ 1.        ]
+ [-2.10415665]
+ [ 0.31163515]
+ [40.61256259]]
+ '''
+

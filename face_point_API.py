@@ -5,10 +5,10 @@ import numpy as np
 from skimage import io
 import json
 
-def get_face_attributes_list(image_array,count):
+def get_face_attributes_list(image_array):
     '''输入值域为（0，255）的图片像素矩阵，返回4个属性的列表，
     前3个属性都是数值，第4个属性是ndarray'''
-    points_array = fp.get_points_array_with_image_array(image_array,count)
+    points_array = fp.get_points_array_with_image_array(image_array)
     attributes_list = fp.get_3_attributes_list(points_array)
     attributes_list.append(fp.distance_matrix(points_array))
     return attributes_list
@@ -23,7 +23,9 @@ def get_4_distance_and_norm(attributes_list_1, attributes_list_2):
     distance_array[3, :] = np.array(fp.distance_with_distance_matrix(
         attributes_list_1[3], attributes_list_2[3]))
     '''得到均值mean和标准差variance_sqrt后经过下面一步处理再输出'''
-    #distance_array=(distance_array-mean)/variance_sqrt
+    variance_sqrt=np.array([[3.73735969, 0.27621047, 0.08418358, 0.10745149]]).reshape(4,1)
+    mean=np.array([[ 0.05842521, -0.00543055,  0.00099243,  0.33862748]]).reshape(4,1)
+    distance_array=(distance_array-mean)/variance_sqrt
     return distance_array
 
 def compare_face(attributes_list_1, attributes_list_2,
@@ -37,49 +39,51 @@ def compare_face(attributes_list_1, attributes_list_2,
     return np.sum(np.multiply(distance_array, w))
 
 '''匹配脸型,排序输出'''
-# user_face_image_path='images\\20174164.jpg'
-# path='student_images\\*.jpg'
-# collections=io.ImageCollection(path)
-# collections_user=io.ImageCollection(user_face_image_path)
+user_face_image_path='images\\women\\2.jpg'
+#path='test_images\\student_man\\*.jpg'
+#path='images\\man\\*.jpg'
+path='images\\women\\*.jpg'
+collections=io.ImageCollection(path)
+collections_user=io.ImageCollection(user_face_image_path)
 
-# user_face_image=io.imread(user_face_image_path)
+user_face_image=io.imread(user_face_image_path)
+user_face_attribute_list=get_face_attributes_list(user_face_image)
+result = []
+count=0
+for image in collections:
+    if(count%10==0):
+        print(count)
+    count+=1
+    try:
+        attribute_list= get_face_attributes_list(image)
+        result.append( [ compare_face(user_face_attribute_list, attribute_list) , image,
+            get_4_distance_and_norm(user_face_attribute_list,attribute_list )**2 ] )
+    except:
+        pass
+result.sort()
 
-# result = []
-# count=0
-# for image in collections[100:200]:
-#     if(count%10==0):
-#         print(count)
-#     count+=1
-#     try:
-#         attribute_list= get_face_attributes_list(image)
-#         result.append( [ compare_face(user_face_image, attribute_list) , image, 
-#             get_4_distance_and_norm(get_face_attributes_list(user_face_image),
-#                                     get_face_attributes_list(image) ) ] )
-#     except:
-#         pass
-# result.sort()
-# i=0
-# for e in result:
-#     print('=================',i,'===================')
-#     i+=1
-#     print(e[0], e[2].reshape(1,-1))
+for i in range(len(result)):
+    e=result[i]
+    print('=================',i,'===================')
+    i+=1
+    print(e[0], e[2].reshape(1,-1))
 
-#     io.imshow(e[1])
-#     io.show()
+    io.imshow(e[1])
+    io.show()
 '''获得调节4个属性向量的均值与方差'''
 # #获得图片
-# path='./test_images/*.jpg'
+# path='./test_images/saved/*.jpg'
 # coll=io.ImageCollection(path)
 # #获得所有图片的属性列表
 # attributes=[]
 # count=0
-# for image in coll:
+# for image in coll[500:1500]:
 #     try:
-#         attributes.append(get_face_attributes_list(image,count))
+#         attributes.append(get_face_attributes_list(image))
 #         if(count%10==0):
 #                 print(count)
 #     except NoFaceException as e:
-#         print("未探测到脸,图片编号："+str(e.count+20174000))
+#         print("未探测到脸,图片编号："+str(count))
 #     finally:
 #         count+=1
 # #获得test_images中每两张图片的差值向量，存在Result中
@@ -94,29 +98,41 @@ def compare_face(attributes_list_1, attributes_list_2,
 #         Result.append(dist_4)
 # #由result计算每一个属性分布的均值与方差
 # Result=np.array(Result).reshape(-1,4)
-# mean=np.sum(Result,axis=0,keepdims=True)/Result.shape[0]
-# variance=np.sum((Result-mean)**2,axis=0,keepdims=True)/Result.shape[0]
+# mean=np.sum(Result,axis=0,keepdims=True)/count
+# variance=np.sum((Result-mean)**2,axis=0,keepdims=True)/count
 # variance_sqrt=np.sqrt(variance)
+# print(count)
 # print(mean)
 # print(variance_sqrt)
 # '''
-# 测试了970多张图片得到的结果，但发现大量图片不清晰，故暂时不用，看能不能更换图片重算
-# [[-0.07086281 -0.012985   -0.00115657  0.33695413]]
-# [[4.2680468  0.26716674 0.0859714  0.10235114]]
+# :1000
+# 498501
+# [[ 0.36320478 -0.02352534  0.00160396  0.33969678]]
+# [[3.62749238 0.30238229 0.08054489 0.10833611]]
+
+# 1000:
+# 566580
+# [[-0.0155081  -0.00613732  0.00053208  0.34195277]]
+# [[3.79367141 0.26486188 0.08769826 0.10836627]]
+
+# 500:1500
+# 499500
+# [[-0.16188268  0.01342973  0.0009043   0.33378846]]
+# [[3.78313319 0.26296363 0.0838283  0.10553102]]
 # '''
 '''筛选出像素高的图片'''
-# path='./test_images/*.jpg'
-# coll=io.ImageCollection(path)
-# i=0
-# name_str='./test_images/saved/'
-# for img in coll:
-#     if(img.shape[0]*img.shape[1]>=480*640):
-#         if(i%10==0):
-#             print(i)
-#         io.imsave(name_str+str(i)+'.jpg',img)
-#         i+=1
+#path='./test_images/women/*.jpg'
+#coll=io.ImageCollection(path)
+#i=0
+#name_str='./test_images/saved/'
+#for img in coll:
+#    if(img.shape[0]*img.shape[1]>=480*640):
+#        if(i%10==0):
+#            print(i)
+#        io.imsave(name_str+str(i)+'.jpg',img)
+#        i+=1
 '''测试识别图片效果,清不清晰'''
-# image_path='./test_images/saved/287.jpg'
+# image_path='./test_images/saved/632.jpg'
 # img=io.imread(image_path)
 # fp.try_model0(img)
 

@@ -6,8 +6,8 @@ from skimage import io
 import matplotlib.pyplot as plt
 import math
 class NoFaceException(Exception):
-    def __init__(self, count):
-        self.count=count
+    def __init__(self):
+        pass
 
 predictor_path = r"model\shape_predictor_68_face_landmarks.dat"
 detector = dlib.get_frontal_face_detector()
@@ -132,11 +132,11 @@ def show_two_points(points_array_1, points_array_2):
 
     plt.show()
 
-def get_points_array_with_image_array(image_array,count):
+def get_points_array_with_image_array(image_array):
     # 输入一个值域为(0,255)的图片像素矩阵,返回平移缩放后的特征点矩阵
     dets = detector(image_array, 1)
     if(len(dets)==0):
-        raise NoFaceException(count)
+        raise NoFaceException()
     for k, d in enumerate(dets):
         shape = predictor(image_array, d)
         landmark = np.matrix([[p.x, p.y] for p in shape.parts()])

@@ -7,6 +7,9 @@ Created on Sun Jan 13 17:55:17 2019
 
 from skimage import io
 
+import tensorflow as tf
+
+
 path='./images/man/*.jpg'
 collection=io.ImageCollection(path)
 

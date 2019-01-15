@@ -131,7 +131,7 @@ def show_two_points(points_array_1, points_array_2):
 
 def get_points_array(image_path):
     
-    img = io.imread(image_path)
+    img = io.imread(image_path)     # img 是一个图片像素矩阵，值域(0,255)
 
     dets = detector(img, 1)
 
@@ -205,7 +205,7 @@ def distance_matrix(points_array):
     x_distance = np.power(x-(x.T), 2)
     y_distance = np.power(y-(y.T), 2)
     distance = np.sqrt(x_distance + y_distance)
-    return distance
+    return distance     # n*n 维的矩阵，就是完全图的距离矩阵
 #居中归一
 def get_changed_points_array(face_path):
     return change_size(move_to_center(get_points_array(face_path)))
@@ -276,14 +276,14 @@ def evaluate2(points_array1,points_array2,weight_list):
     a2=np.array(atrributes2).reshape(-1,1)
     
     a1=a1/np.array([[20],[1],[0.2]])
-    a2=a2/np.array([[20],[1],[0.2]])
+    a2=a2/np.array([[20],[1],[0.2]v])
     w=np.array(weight_list).reshape(-1,1)
-    
+    # 先弄一个平方之前的[a1-a2, distance], 然后确定一个[4,1]的系数，再平方放大
     delta_square=np.abs(a1-a2)**2
     dist_square=distance(f1,f2)**2
-    delta_square=np.append(delta_square,[[dist_square]],axis=0)
+    delta_square=np.append(delta_square,[[dist_square]],axis=0) # shape = [4, 1] , numpy.ndarray
     
-    return np.sum(np.multiply(delta_square,w)),delta_square
+    return np.sum(np.multiply(delta_square,w)),delta_square    # 到时候要修改
 
 #def recommand():
     
@@ -340,3 +340,4 @@ delta_square_all_array=np.array(delta_square_all).reshape(4,-1)
 print(delta_square_all_array.shape)
 s=np.sum(delta_square_all_array,axis=1,keepdims=True)/delta_square_all_array.shape[1]
 print(s)
+

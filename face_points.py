@@ -7,29 +7,36 @@ import matplotlib.pyplot as plt
 import math
 
 predictor_path = r"model\shape_predictor_68_face_landmarks.dat"
-
-
-def try_model(faces_path = r"images\3.jpg"):
-    '''加载人脸检测器、加载官方提供的模型构建特征提取器'''
-    detector = dlib.get_frontal_face_detector()
-    predictor = dlib.shape_predictor(predictor_path)
-
-    # win = dlib.image_window()
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor(predictor_path)
+def try_model0(faces_path):
+    win = dlib.image_window()
     img = io.imread(faces_path)
-    #
-    # win.clear_overlay()
-    # win.set_image(img)
-
+    
+    win.clear_overlay()
+    win.set_image(img)
+    dets = detector(img, 1)
+    
+    print("Number of faces detected: {}".format(len(dets)))
+    for k, d in enumerate(dets):
+        shape = predictor(img, d)
+        landmark = np.matrix([[p.x, p.y] for p in shape.parts()])
+        print("face_landmark:")
+        
+        print(landmark.shape)
+        print (landmark)  # 打印关键点矩阵
+        win.add_overlay(shape)  #绘制特征点
+    dlib.hit_enter_to_continue()
+    
+def try_model(faces_path = r"images\3.jpg"):
+    img = io.imread(faces_path)
+    
     dets = detector(img, 1)
     print("Number of faces detected: {}".format(len(dets)))
     for k, d in enumerate(dets):
         shape = predictor(img, d)
         landmark = np.matrix([[p.x, p.y] for p in shape.parts()])
-        # print("face_landmark:")
-        #
-        # print(landmark.shape)
-        # print (landmark)  # 打印关键点矩阵
-        # win.add_overlay(shape)  #绘制特征点
+        
     x = []
     y = []
     for i in range(68):
@@ -40,21 +47,28 @@ def try_model(faces_path = r"images\3.jpg"):
         else:
             plt.plot(landmark[i, 0], landmark[i, 1], "b*")
     plt.show()
-    # dlib.hit_enter_to_continue()
-
+    
 def gradient(point1, point2, E = 0.001):
     if abs(point2[0, 0]-point1[0, 0]) < 0.0005:
         return (point2[0, 1]-point1[0, 1])/(point2[0, 0]-point1[0, 0] + E)
     return (point2[0, 1]-point1[0, 1])/(point2[0, 0]-point1[0, 0])
 
 def show_gradient(face_path):
+    
     face = get_changed_points_array(face_path)
     grads = []
     for i in range(2, 5):
         grads.append(abs(np.arctan(gradient(face[i], face[i+1])) - np.arctan(gradient(face[i+1], face[i+2]))))
     # print(grads)
     print(max(grads))
-
+#脸颊部斜角
+def check_gradient(face_point):
+    face = face_point
+    grads = []
+    for i in range(2, 5):
+        grads.append(abs(np.arctan(gradient(face[i], face[i+1])) - np.arctan(gradient(face[i+1], face[i+2]))))
+    # print(grads)
+    return (math.pi-(max(grads)))/math.pi*180
 # 下巴曲率半径
 def jaw_curvature(points_array):
     jaw = points_array[4:13, :]
@@ -67,15 +81,15 @@ def jaw_curvature(points_array):
     R = -2*((d - b**2)/(a - b*c))
     return R
 
-# def width_divide_heigth(points_array, num = 3):
-#     width = []
-#     for i in range(num):
-#         width.append(points_array[i: 0] - points_array[16-i: 0])
-#     print(width)
-#     wid = sum(width)/num
-#     # wid = (points_array[:, 0].max() - points_array[:, 0].min())
-#     height = (points_array[:, 1].max() - points_array[:, 1].min())
-#     return wid/height
+def width_divide_heigth(points_array, num = 3):
+    width = []
+    for i in range(num):
+        width.append(points_array[16-i, 0] - points_array[i, 0])
+    #print(width)
+    wid = sum(width)/num
+    # wid = (points_array[:, 0].max() - points_array[:, 0].min())
+    height = (points_array[:, 1].max() - points_array[:, 1].min())
+    return wid/height
 
 def show_points(points_array):
     x = []
@@ -115,19 +129,16 @@ def show_two_points(points_array_1, points_array_2):
 
     plt.show()
 
-def get_points_array(image_path, predictor_path = predictor_path):
-    detector = dlib.get_frontal_face_detector()
-    predictor = dlib.shape_predictor(predictor_path)
-
+def get_points_array(image_path):
+    
     img = io.imread(image_path)
-
 
     dets = detector(img, 1)
 
     for k, d in enumerate(dets):
         shape = predictor(img, d)
         landmark = np.matrix([[p.x, p.y] for p in shape.parts()])
-        return landmark
+        return landmark#只返回第一张脸
     return None
 
 # 保持长宽比例不变，把外切矩形的面积转换成1
@@ -142,7 +153,28 @@ def change_size(points_array):
 def move_to_center(points_array):
     cen = points_array.sum(axis = 0) / points_array.shape[0]
     return points_array - cen
-
+def distance1(array0,array1):
+    p1=np.max(array0,axis=0)
+    p2=np.min(array0,axis=0)
+    p1=(p1-p2)
+    S=p1[0]*p1[1]
+    array0=array0/np.sqrt(S)
+    
+    
+    m=array0.shape[0]
+    
+    xy0_2=np.sum(np.power(array0,2),axis=0,keepdims=True)/m
+    xy0=np.sum(array0,axis=0,keepdims=True)/m
+    
+    xy1_2=np.sum(np.power(array1,2),axis=0,keepdims=True)/m
+    xy1=np.sum(array1,axis=0,keepdims=True)/m
+    
+    xy01=np.sum(array0*array1,axis=0,keepdims=True)/m
+    
+    temp=(xy0_2*xy1_2-np.power(xy01,2)-\
+          np.power(xy0*xy1_2-xy1*xy01,2)/(xy1_2-np.power(xy1,2)))/xy1_2
+    d=np.sum(temp)
+    return np.sqrt(d)
 def distance(points_array_1, points_array_2):
     # 欧式距离
     # return np.sqrt(np.sum(np.power(points_array_1-points_array_2, 2))/points_array_1.shape[0])
@@ -174,13 +206,21 @@ def distance_matrix(points_array):
     y_distance = np.power(y-(y.T), 2)
     distance = np.sqrt(x_distance + y_distance)
     return distance
-
+#居中归一
 def get_changed_points_array(face_path):
     return change_size(move_to_center(get_points_array(face_path)))
 
+def get_face_edge_points(face_points, include_nose = False):
+    if(include_nose):
+        f = np.zeros((26, 2))
+        f[0:17, :] = face_points[0:17, :]
+        f[17:26, :] = face_points[27:36, :]
+        return f
+    else:
+        return face_points[0:17, :]
 def face_distance(face_path_1, face_path_2):
-    face_1 = change_size(move_to_center(get_points_array(face_path_1)))
-    face_2 = change_size(move_to_center(get_points_array(face_path_2)))
+    face_1 = get_changed_points_array(face_path_1)
+    face_2 = get_changed_points_array(face_path_2)
     f1 = np.zeros((26, 2))
     f2 = np.zeros((26, 2))
     f1[0:17, :] = face_1[0:17, :]
@@ -188,17 +228,115 @@ def face_distance(face_path_1, face_path_2):
     f2[0:17, :] = face_2[0:17, :]
     f2[17:26, :] = face_2[27:36, :]
 
-    print(distance(f1, f2))
-    show_two_points(f1, f2)
-
     return distance(f1, f2)
+    #show_two_points(f1, f2)
+def evaluate(points_array1,points_array2,weight_list):
+    f1=get_face_edge_points(points_array1,include_nose = False)
+    f2=get_face_edge_points(points_array2,include_nose = False)
+    
+    atrributes1=[]
+    atrributes2=[]
+    #check_gradient
+    atrributes1.append(check_gradient(f1))
+    atrributes2.append(check_gradient(f2))
+    
+    atrributes1.append(jaw_curvature(f1))
+    atrributes2.append(jaw_curvature(f2))
+    
+    atrributes1.append(width_divide_heigth(f1, num = 3))
+    atrributes2.append(width_divide_heigth(f2, num = 3))
+    
+    a1=np.array(atrributes1).reshape(-1,1)
+    a2=np.array(atrributes2).reshape(-1,1)
+    
+    a1=a1/np.array([[20*0.15],[0.276],[0.2*0.47]])
+    a2=a2/np.array([[20*0.15],[0.276],[0.2*0.47]])
+    w=np.array(weight_list).reshape(-1,1)
+    
+    print(a1-a2)
+    return np.sum(np.multiply(np.power(a1-a2,2),w))
 
+def evaluate2(points_array1,points_array2,weight_list):
+    f1=get_face_edge_points(points_array1,include_nose = False)
+    f2=get_face_edge_points(points_array2,include_nose = False)
+    
+    atrributes1=[]
+    atrributes2=[]
+    #check_gradient
+    atrributes1.append(check_gradient(f1))
+    atrributes2.append(check_gradient(f2))
+    
+    atrributes1.append(jaw_curvature(f1))
+    atrributes2.append(jaw_curvature(f2))
+    
+    atrributes1.append(width_divide_heigth(f1, num = 3))
+    atrributes2.append(width_divide_heigth(f2, num = 3))
+    
+    a1=np.array(atrributes1).reshape(-1,1)
+    a2=np.array(atrributes2).reshape(-1,1)
+    
+    a1=a1/np.array([[20],[1],[0.2]])
+    a2=a2/np.array([[20],[1],[0.2]])
+    w=np.array(weight_list).reshape(-1,1)
+    
+    delta_square=np.abs(a1-a2)**2
+    dist_square=distance(f1,f2)**2
+    delta_square=np.append(delta_square,[[dist_square]],axis=0)
+    
+    return np.sum(np.multiply(delta_square,w)),delta_square
 
+#def recommand():
+    
+user_face_path='images/17.jpg'
+face_points0=get_changed_points_array(user_face_path)
 
-for i in range(22):
+L=[]
+#脸颊角度 下巴曲率半径 脸部长宽比 distance
+WEIGHT=[0.2,0.4,0.2,0.2]
+#WEIGHT=[0.3,0.4,0.3]
+
+path='images\\man\\*.jpg'
+collections=io.ImageCollection(path)
+print(collections)
+
+draw_1 = []
+draw_2 = []
+delta_square_all=[]
+for i in ['images\\man\\u=172972933,2291792799&fm=26&gp=0.jpg', 'images\\man\\u=283846838,3017887413&fm=26&gp=0.jpg', 'images\\man\\u=1301088983,636709627&fm=26&gp=0.jpg', 'images\\man\\u=1627006444,3336284082&fm=26&gp=0.jpg', 'images\\man\\u=2506157847,2674135355&fm=26&gp=0.jpg', 'images\\man\\u=2623628823,3324713832&fm=26&gp=0.jpg', 'images\\man\\u=2932027764,1369049847&fm=26&gp=0.jpg', 'images\\man\\u=3123600464,1058750482&fm=26&gp=0.jpg', 'images\\man\\u=3568392546,729156733&fm=11&gp=0.jpg', 'images\\man\\u=3920783153,427755879&fm=26&gp=0.jpg', 'images\\man\\u=3991619722,3767876164&fm=26&gp=0.jpg', 'images\\man\\u=4200512207,3956956204&fm=26&gp=0.jpg']:
     print("===================",i,"======================")
-    show_gradient("images\\" + str(i)+ ".jpg")
-    print(jaw_curvature(get_changed_points_array("images\\" + str(i)+ ".jpg")))
-    print(width_divide_heigth(get_changed_points_array("images\\" + str(i)+ ".jpg")))
-    # try_model("images\\" + str(i)+ ".jpg")
-#     print(i, face_distance(r"images\5.jpg", "images\\" + str(i)+ ".jpg" ))
+    face_path=i
+    
+    face_points=get_changed_points_array(face_path)
+    
+    dist=face_distance(user_face_path,i)
+    draw_1.append(dist*25)
+
+    e,delta_square=evaluate2(face_points0,face_points,WEIGHT)
+    delta_square_all.append(delta_square)
+
+    L.append([e, i])
+    draw_2.append(e)
+    
+#    
+    #show_two_points(get_face_edge_points(face_points0),get_face_edge_points(face_points))
+    #face_distance(user_face_path, face_path)
+    #try_model(face_path)
+
+'''打印最后排名'''
+#L.sort()
+#i=0
+#for e in L:
+#    print("====================", i, "======================")
+#    print(e[0])
+#    io.imshow(e[1])
+#    io.show()
+#    i+=1
+
+#plt.plot(range(len(draw_1)), draw_1, "r")
+#plt.plot(range(len(draw_2)), draw_2, "b")
+#plt.show()
+    
+delta_square_all_array=np.array(delta_square_all).reshape(4,-1)
+print(delta_square_all_array.shape)
+s=np.sum(delta_square_all_array,axis=1,keepdims=True)/delta_square_all_array.shape[1]
+print(s)

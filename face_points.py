@@ -12,9 +12,9 @@ class NoFaceException(Exception):
 predictor_path = r"model\shape_predictor_68_face_landmarks.dat"
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(predictor_path)
-def try_model0(faces_point_array):
+def try_model0(image_array):
     win = dlib.image_window()
-    img = faces_point_array
+    img = image_array
     
     win.clear_overlay()
     win.set_image(img)
@@ -65,7 +65,7 @@ def show_gradient(face_path):
     # print(grads)
     print(max(grads))
 #脸颊部斜角
-def check_gradient(face_point):
+def cheek_degree(face_point):
     face = face_point
     grads = []
     for i in range(2, 5):
@@ -252,8 +252,8 @@ def face_distance(face_path_1, face_path_2):
 def get_3_attributes_list(points_array):
     f = get_face_edge_points(points_array, include_nose=False)
     atrributes = []
-    # check_gradient
-    atrributes.append(check_gradient(f))
+    # cheek_degree
+    atrributes.append(cheek_degree(f))
     atrributes.append(jaw_curvature(f))
     atrributes.append(width_divide_heigth(points_array, num=3))
     # print(atrributes)
@@ -266,9 +266,9 @@ def evaluate(points_array1,points_array2,weight_list):
     
     atrributes1=[]
     atrributes2=[]
-    #check_gradient
-    atrributes1.append(check_gradient(f1))
-    atrributes2.append(check_gradient(f2))
+    #cheek_degree
+    atrributes1.append(cheek_degree(f1))
+    atrributes2.append(cheek_degree(f2))
     
     atrributes1.append(jaw_curvature(f1))
     atrributes2.append(jaw_curvature(f2))
@@ -292,9 +292,9 @@ def evaluate2(points_array1,points_array2,weight_list):
     f2=get_face_edge_points(points_array2,include_nose = False)
     atrributes1=[]
     atrributes2=[]
-    #check_gradient
-    atrributes1.append(check_gradient(f1))
-    atrributes2.append(check_gradient(f2))
+    #cheek_degree
+    atrributes1.append(cheek_degree(f1))
+    atrributes2.append(cheek_degree(f2))
     
     atrributes1.append(jaw_curvature(f1))
     atrributes2.append(jaw_curvature(f2))

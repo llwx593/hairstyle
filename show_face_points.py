@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-
-from get_face_attributes import get_points_array
 import numpy as np
 import cv2
 import dlib
@@ -26,7 +24,7 @@ def show_68points(img_path):
             #print(idx,pos)
 
             # 利用cv2.circle给每个特征点画一个圈，共68个
-            cv2.circle(img, pos, 0, color=(0, 255, 0))
+            cv2.circle(img, pos, 2, color=(0, 255, 0))
             # 利用cv2.putText输出1-68
             font = cv2.FONT_HERSHEY_SIMPLEX
             cv2.putText(img, str(idx+1), pos, font, 0.35, (0, 0, 255), 1,cv2.LINE_AA)
@@ -34,6 +32,7 @@ def show_68points(img_path):
     cv2.namedWindow("img", 2)
     cv2.imshow("img", img)
     cv2.waitKey(0)
+
 def show_points(points_array):
     x = []
     y = []
@@ -74,4 +73,4 @@ def show_two_points(points_array_1, points_array_2):
     plt.show()
 
 if __name__=="__main__":
-    show_68points("test_images/103.jpg")
+    show_68points("test_images/389.jpg")

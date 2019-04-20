@@ -42,14 +42,13 @@ If successful, a file `output.jpg` will be produced with the facial features
 from `<head image>` replaced with the facial features from `<face image>`.
 
 """
-import face_point_API as fpa
-import numpy as np
-from skimage import io
 import cv2
 import dlib
 import numpy
 
-import os
+#debug
+from skimage import io
+import numpy as np
 
 PREDICTOR_PATH = "model/shape_predictor_68_face_landmarks.dat"
 SCALE_FACTOR = 1
@@ -71,7 +70,7 @@ ALIGN_POINTS = (LEFT_BROW_POINTS + RIGHT_EYE_POINTS + LEFT_EYE_POINTS +
 # Points from the second image to overlay on the first. The convex hull of each
 # element will be overlaid.
 OVERLAY_POINTS = [
-    JAW_POINTS+RIGHT_BROW_POINTS+LEFT_BROW_POINTS
+     JAW_POINTS + LEFT_BROW_POINTS + RIGHT_BROW_POINTS,
 ]
 # Amount of blur to use during colour correction, as a fraction of the
 # pupillary distance.
@@ -85,46 +84,6 @@ class TooManyFaces(Exception):
 
 class NoFaces(Exception):
     pass
-
-def get_landmarks(im):
-    rects = detector(im, 1)
-
-    if len(rects) > 1:
-        raise TooManyFaces
-    if len(rects) == 0:
-        raise NoFaces
-
-    return numpy.matrix([[p.x, p.y] for p in predictor(im, rects[0]).parts()])
-
-def annotate_landmarks(im, landmarks):
-    im = im.copy()
-    for idx, point in enumerate(landmarks):
-        pos = (point[0, 0], point[0, 1])
-        cv2.putText(im, str(idx), pos,
-                    fontFace=cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
-                    fontScale=0.4,
-                    color=(0, 0, 255))
-        cv2.circle(im, pos, 3, color=(0, 255, 255))
-    return im
-
-def draw_convex_hull(im, points, color):
-    points = cv2.convexHull(points)
-    cv2.fillConvexPoly(im, points, color=color)
-
-def get_face_mask(im, landmarks):
-    im = numpy.zeros(im.shape[:2], dtype=numpy.uint8)
-
-    for group in OVERLAY_POINTS:
-        draw_convex_hull(im,
-                         landmarks[group],
-                         color=1)
-
-    im = numpy.array([im, im, im]).transpose((1, 2, 0))
-
-    im = (cv2.GaussianBlur(im, (FEATHER_AMOUNT, FEATHER_AMOUNT), 0) > 0) * 1.0
-    im = cv2.GaussianBlur(im, (FEATHER_AMOUNT, FEATHER_AMOUNT), 0)
-
-    return im
 
 def transformation_from_points(points1, points2):
     """
@@ -165,6 +124,46 @@ def transformation_from_points(points1, points2):
                                        c2.T - (s2 / s1) * R * c1.T)),
                          numpy.matrix([0., 0., 1.])])
 
+def get_landmarks(im):
+    rects = detector(im, 1)
+
+    if len(rects) > 1:
+        raise TooManyFaces
+    if len(rects) == 0:
+        raise NoFaces
+
+    return numpy.matrix([[p.x, p.y] for p in predictor(im, rects[0]).parts()])
+
+def annotate_landmarks(im, landmarks):
+    im = im.copy()
+    for idx, point in enumerate(landmarks):
+        pos = (point[0, 0], point[0, 1])
+        cv2.putText(im, str(idx), pos,
+                    fontFace=cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
+                    fontScale=0.4,
+                    color=(0, 0, 255))
+        cv2.circle(im, pos, 3, color=(0, 255, 255))
+    return im
+
+def draw_convex_hull(im, points, color):
+    points = cv2.convexHull(points)
+    cv2.fillConvexPoly(im, points, color=color)
+
+def get_face_mask(im, landmarks):
+    im = numpy.zeros(im.shape[:2], dtype=numpy.float64)
+
+    for group in OVERLAY_POINTS:
+        draw_convex_hull(im,
+                         landmarks[group],
+                         color=1)
+
+    im = numpy.array([im, im, im]).transpose((1, 2, 0))
+
+    im = (cv2.GaussianBlur(im, (FEATHER_AMOUNT, FEATHER_AMOUNT), 0) > 0) * 1.0
+    im = cv2.GaussianBlur(im, (FEATHER_AMOUNT, FEATHER_AMOUNT), 0)
+
+    return im
+
 def read_im_and_landmarks(fname):
     im = cv2.imread(fname, cv2.IMREAD_COLOR)
     im = cv2.resize(im, (im.shape[1] * SCALE_FACTOR,
@@ -183,24 +182,9 @@ def warp_im(im, M, dshape):
                    flags=cv2.WARP_INVERSE_MAP)
     return output_im
 
-def correct_colours(im1, im2, landmarks1):
-    blur_amount = COLOUR_CORRECT_BLUR_FRAC * numpy.linalg.norm(
-                              numpy.mean(landmarks1[LEFT_EYE_POINTS], axis=0) -
-                              numpy.mean(landmarks1[RIGHT_EYE_POINTS], axis=0))
-    blur_amount = int(blur_amount)
-    if blur_amount % 2 == 0:
-        blur_amount += 1
-    im1_blur = cv2.GaussianBlur(im1, (blur_amount, blur_amount), 0)
-    im2_blur = cv2.GaussianBlur(im2, (blur_amount, blur_amount), 0)
-
-    # Avoid divide-by-zero errors.
-    im2_blur += (128 * (im2_blur <= 1.0)).astype(im2_blur.dtype)
-
-    return (im2.astype(numpy.float64) * im1_blur.astype(numpy.float64) /
-                                                im2_blur.astype(numpy.float64))
-def output(img_path1,img_path2):
-    im1, landmarks1 = read_im_and_landmarks(img_path1)
-    im2, landmarks2 = read_im_and_landmarks(img_path2)
+def swap_face(model_img_path1,user_img_path2):
+    im1, landmarks1 = read_im_and_landmarks(model_img_path1)
+    im2, landmarks2 = read_im_and_landmarks(user_img_path2)
 
     M = transformation_from_points(landmarks1[ALIGN_POINTS],
                                    landmarks2[ALIGN_POINTS])
@@ -226,68 +210,11 @@ def output(img_path1,img_path2):
     j=(j_list.max()+j_list.min())//2
     output = cv2.seamlessClone(warped_im2, im1, combined_mask, (j,i), cv2.NORMAL_CLONE)
 
-#    cv2.imshow('0',im2)
-#    cv2.imshow('1',warped_im2)
-#    cv2.imshow('2',im1)
-#    cv2.imshow('3',combined_mask)
-#    cv2.imshow('output',output)
-#    cv2.waitKey()
-#    cv2.destroyAllWindows()
-    cv2.imwrite('output/output.jpg',output)
+    return cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
 
-def advise_image(user_image_path,database_path):
-    image_paths=fpa.filter(user_image_path,database_path)
-    print(len(image_paths))
-    count=0
-    for image_path in image_paths:
-        output(image_path,user_image_path)
-#        io.imshow(io.imread(user_image_path))
-#        io.show()
-#        io.imshow(io.imread(image_path))
-#        io.show()
-        img=io.imread('output/output.jpg')
-        print('fininsh '+str(count)+' picture')
-        io.imsave('output/'+str(count)+'.jpg',img)
-        count+=1
-    L=[]
-    for i in range(count):
-        L.append('output/'+str(i)+'.jpg')
 
-    return L
-#        next_flag=input('是否继续(y/n)\n')
-#        if next_flag=='n':
-#            break
 
-def advise_image2(user_image_path,database_path):
-    image_paths=fpa.filter(user_image_path,database_path)
-    print(len(image_paths))
-
-    for image_path in image_paths:
-        output(image_path,user_image_path)
-        io.imshow(io.imread(user_image_path))
-        io.show()
-        io.imshow(io.imread(image_path))
-        io.show()
-        io.imshow(io.imread('output/output.jpg'))
-        io.show()
-        output_img=cv2.imread('output/output.jpg',cv2.IMREAD_COLOR)
-        cv2.imshow('output',output_img)
-        cv2.waitKey()
-        cv2.destroyAllWindows()
-#        next_flag=input('是否继续(y/n)\n')
-#        if next_flag=='n':
-#            break
-
-#student_images/student_man/
-#test_images/man/
-#database_path='C:/Users/15440/Desktop/lowQuality/'
 if __name__=='__main__':
-    user_image_path='test_images/22.jpg'
-    database_path='test_images/test_man/'
-    advise_image2(user_image_path,database_path)
-#    print(advise_image(user_image_path,database_path))
-
-#    user_path='test_images/58.jpg'
-#    celebrity_path='test_images/85.jpg'
-#
-#    output(celebrity_path,user_path)
+    user_image_path='test_images/100.jpg'
+    model_image_path='test_images/388.jpg'
+    io.imshow(swap_face(model_image_path,user_image_path))

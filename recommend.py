@@ -6,8 +6,6 @@ import json
 
 from get_face_type import get_face_type
 from get_face_points import get_rotated_points_array
-#debug
-from face_swap import swap_face
 
 def load_json(style_dir_path):
 #得到数据库中的图片的脸型并存储
@@ -75,11 +73,4 @@ if __name__=='__main__':
 
     print("User face type: "+user_face_type)
     print("Totally "+str(len(L))+" pictures")
-    counter=0
-    for img_path in L:
-        print(counter)
-        counter+=1
-
-        io.imshow(swap_face(img_path,user_img_path))
-        io.show()
-
+    print(L)

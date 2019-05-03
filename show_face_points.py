@@ -4,12 +4,19 @@ import cv2
 import dlib
 import matplotlib.pyplot as plt
 
+#debug
+import os
+
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('model/shape_predictor_68_face_landmarks.dat')
 
+#中文路径问题
+def cv_imread(file_path):
+    return cv2.imdecode(np.fromfile(file_path,dtype=np.uint8),cv2.IMREAD_COLOR)
+
 def show_68points(img_path):
     # cv2读取图像
-    img = cv2.imread(img_path)
+    img = cv_imread(img_path)
 
     # 取灰度
     img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -73,4 +80,15 @@ def show_two_points(points_array_1, points_array_2):
     plt.show()
 
 if __name__=="__main__":
-    show_68points("test_images/389.jpg")
+    #show_68points("test_images/389.jpg")
+
+    #show one dir
+    path = 'face_classification/standard_faces/长脸/'
+
+    img_path_list=os.listdir(path)
+    counter=0
+    for img_path in img_path_list:
+        print(counter,len(img_path_list))
+        counter+=1
+
+        show_68points(os.path.join(path,img_path))

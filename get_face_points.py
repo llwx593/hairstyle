@@ -13,7 +13,7 @@ class TooManyFaces(Exception):
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('model/shape_predictor_68_face_landmarks.dat')
 
-standard_face_path='model/standard_face.jpg'
+standard_face_path='database/standard_face.jpg'
 
 def get_points_array(image_array):
     # image_array 是一个图片像素矩阵，值域(0,255)

@@ -49,6 +49,11 @@ import numpy
 #debug
 from skimage import io
 import numpy as np
+import os
+
+#中文路径问题
+def cv_imread(file_path):
+    return cv2.imdecode(np.fromfile(file_path,dtype=numpy.uint8),cv2.IMREAD_COLOR)
 
 PREDICTOR_PATH = "model/shape_predictor_68_face_landmarks.dat"
 SCALE_FACTOR = 1
@@ -165,7 +170,7 @@ def get_face_mask(im, landmarks):
     return im
 
 def read_im_and_landmarks(fname):
-    im = cv2.imread(fname, cv2.IMREAD_COLOR)
+    im = cv_imread(fname) # faild for chinese path
     im = cv2.resize(im, (im.shape[1] * SCALE_FACTOR,
                          im.shape[0] * SCALE_FACTOR))
     s = get_landmarks(im)
@@ -210,11 +215,40 @@ def swap_face(model_img_path1,user_img_path2):
     j=(j_list.max()+j_list.min())//2
     output = cv2.seamlessClone(warped_im2, im1, combined_mask, (j,i), cv2.NORMAL_CLONE)
 
+    #return output
     return cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
 
-
-
 if __name__=='__main__':
-    user_image_path='test_images/100.jpg'
-    model_image_path='test_images/388.jpg'
-    io.imshow(swap_face(model_image_path,user_image_path))
+    user_image_path='test_images/55.jpg'
+
+    # model_image_path='test_images/120.jpg'
+
+    # img = swap_face(model_image_path,user_image_path)
+
+    # #img = cv2.resize(img, (img.shape[1]//2,img.shape[0]//2))
+
+    # img =cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    # cv2.imshow('img',img)
+    # cv2.waitKey()
+
+    # #dir 
+    path = 'test_images/正脸/best'
+    path = 'D:\\hairstyle_test\\test_images\\man\\'
+    img_name_list = os.listdir(path)
+    cnt = 0
+    for img_name in img_name_list:
+        cnt +=1
+        img_full_path = os.path.join(path, img_name)
+       
+        img = swap_face(img_full_path,user_image_path)
+
+        io.imshow(img)
+        io.show()
+        # img = cv2.resize(img, (img.shape[1]//2,img.shape[0]//2))
+
+        # img =cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        # cv2.imshow('img',img)
+        # cv2.waitKey()
+        io.imsave('output/'+str(cnt)+'.jpg',img)
+        
+        print(img_name)

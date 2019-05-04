@@ -1,2 +1,4 @@
+﻿*.pyc
 
-*.pyc
+output/*
+test.py

@@ -121,16 +121,50 @@ def recommend(user_gender, user_image_array, user_prefer_vector=[0.5, 0.5, 0.5, 
     L = face_shape_sort(user_points_array, style_dir_path)
     return L,user_face_type, style
 
-if __name__=='__main__':
-    #debug for recommend
-    user_img_path='test_images/100.jpg'
-    user_img = io.imread(user_img_path)
+def recommend_swapface_and_return_path(user_image_path, user_gender):
+    user_image_array = io.imread(user_image_path)
+    user_image_name = os.path.basename(user_image_path).split('.')[0]
 
-    L,user_face_type , style =recommend(1, user_img)
+    if not os.path.exists('output/'):
+        os.mkdir('output/')
+    L,user_face_type , style =recommend(user_gender, user_image_array)
+
+    Generated_image_path =[]
+    counter=0
+    for img_path in L:
+        print(counter)
+        counter+=1
+
+        img= swap_face(img_path,user_image_path)
+        output_image_path = os.path.join('output/',user_image_name+\
+                                '_'+style+'_'+str(counter)+'.jpg')
+        #print(output_image_path)
+        io.imsave(output_image_path, img)
+
+        Generated_image_path.append(output_image_path)
+        
+    return Generated_image_path, user_face_type, style
+        
+if __name__=='__main__':
+    '''debug for recommend_swapface_and_return_path'''
+    L, user_face_type , style = recommend_swapface_and_return_path('test_images/100.jpg',1)
 
     print("User face type: "+user_face_type)
     print("Totally "+str(len(L))+" pictures")
     print(L,user_face_type, style)
+
+    for e in L:
+        io.imshow(io.imread(e))
+        io.show()
+    '''debug for recommend'''
+    # user_img_path='test_images/100.jpg'
+    # user_img = io.imread(user_img_path)
+
+    # L,user_face_type , style =recommend(1, user_img)
+
+    # print("User face type: "+user_face_type)
+    # print("Totally "+str(len(L))+" pictures")
+    # print(L,user_face_type, style)
 
     #debug for face_shape_sort
 

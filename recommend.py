@@ -117,6 +117,21 @@ def recommend(user_gender, user_image_array, user_prefer_vector=[0.5, 0.5, 0.5, 
     user_points_array= get_rotated_points_array(user_image_array)
 
     style_list = recommend_hair(user_gender,user_face_type,user_prefer_vector)
+    style = style_list[0]
+    if user_gender==0:
+        style_dir_path= 'database/man/' + style +'/'
+    else:
+        style_dir_path= 'database/woman/' + style +'/'
+
+    recomend_image_path_list = face_shape_sort(user_points_array, style_dir_path, n=10)
+
+    return recomend_image_path_list,user_face_type,style
+
+def recommend_new(user_gender, user_image_array, user_prefer_vector=[0.5, 0.5, 0.5, 0.5, 0.5]):
+    user_face_type=get_face_type(user_gender,user_image_array)
+    user_points_array= get_rotated_points_array(user_image_array)
+
+    style_list = recommend_hair(user_gender,user_face_type,user_prefer_vector)
 
 
     for style in style_list:
@@ -157,7 +172,7 @@ if __name__=='__main__':
     user_img_path='test_images/100.jpg'
     user_img = io.imread(user_img_path)
 
-    style_list,user_face_type =recommend(1, user_img)
+    style_list,user_face_type =recommend_new(1, user_img)
 
     print("User face type: "+user_face_type)
     print("recommend style"+str(style_list))

@@ -4,7 +4,8 @@ from skimage import io
 import numpy as np
 import json
 
-from get_face_type import get_face_type
+# from get_face_type import get_face_type
+from predict_faceshape import predict_faceshape
 from get_face_points import get_rotated_points_array
 #debug
 from face_swap import swap_face
@@ -40,17 +41,95 @@ def recommend_hair(user_gender,user_face_type,\
     else:
         vect1= SHAPE_TO_HAIR_DICT_WOMAN[user_face_type]
     
-    recommend_vect=[] #final recommend 
-    index =0
-    for i in range(len(vect1)):
-        recommend_vect.append(vect1[i]+ user_prefer_vector[i])
-        if recommend_vect[i]>recommend_vect[index]:
-            index=i
+    # recommend_vect=[] #final recommend 
+    # index =0
+    # for i in range(len(vect1)):
+    #     recommend_vect.append(vect1[i]+ user_prefer_vector[i])
+    #     if recommend_vect[i]>recommend_vect[index]:
+    #         index=i
+    index = list(range(len(vect1)))
+    L = list(zip(vect1,index))              #[(0.3,1),...]
+    L.sort(key = lambda x:x[0])     
+    sorted_index = [e[1] for e in L]
+    
     if user_gender==0:
-        return HAIR_MAN[index]
+        return [HAIR_MAN[index] for index in sorted_index]
     else:
-        return HAIR_WOMAN[index]
-        
+        return [HAIR_WOMAN[index] for index in sorted_index]
+
+# def load_json(style_dir_path):
+# #得到数据库中的图片的脸型并存储
+#     data_path=os.path.join(style_dir_path,'data.json')
+#     if os.path.exists(data_path):
+#         with open(data_path) as file:
+#             Dict=json.load(file)
+#             return Dict
+#     else:
+#         Dict={}
+#         img_name_list=os.listdir(style_dir_path)
+#         counter=0
+#         print('totally: '+str(len(img_name_list)))
+#         for img_name in img_name_list:
+#             try:
+#                 print(counter)
+#                 counter+=1
+#                 img_full_path=os.path.join(style_dir_path,img_name)
+#                 #Dict[img_full_path]={}
+
+#                 img=io.imread(img_full_path)
+#                 shape=get_face_type(img)
+
+#                 Dict[img_full_path]=shape
+#             except:
+#                 pass
+#         with open(data_path,'w') as file:
+#             json.dump(Dict,file)
+#             return Dict
+
+# def face_shape_sort(user_face_type,user_points_array,style_dir_path):
+#     # user_img=io.imread(user_img_path)
+#     # user_face_type=get_face_type(user_img)
+#     # user_points_array=get_rotated_points_array(user_img)
+
+#     Dict=load_json(style_dir_path)
+
+#     L=[]
+#     img_name_list=os.listdir(style_dir_path)
+
+#     for img_name in img_name_list:
+#         try:
+#             img_full_path=os.path.join(style_dir_path,img_name)
+
+#             shape=Dict[img_full_path]
+#             if(shape==user_face_type):
+#                 L.append(img_full_path)
+#         except:
+#             pass
+#     D=[]
+#     for img_full_path in L:
+#         img=io.imread(img_full_path)
+#         points_array=get_rotated_points_array(img)
+
+#         distance= np.mean(np.square(points_array-user_points_array))
+#         D.append([img_full_path,distance])
+
+#     D.sort(key=lambda x:x[1])
+#     return [e[0] for e in D]
+
+# def recommend(user_gender, user_image_array, user_prefer_vector=[0.5, 0.5, 0.5, 0.5, 0.5]):
+#     user_face_type=get_face_type(user_image_array)
+#     user_points_array= get_rotated_points_array(user_image_array)
+
+#     style = recommend_hair(user_gender,user_face_type,user_prefer_vector)
+
+#     if user_gender==0:
+#         style_dir_path= 'database/man/' + style +'/'
+#     else:
+#         style_dir_path= 'database/woman/' + style +'/'
+
+#     L = face_shape_sort(user_face_type, user_points_array, style_dir_path)
+#     return L,user_face_type, style
+
 def load_json(style_dir_path):
 #得到数据库中的图片的脸型并存储
     data_path=os.path.join(style_dir_path,'data.json')
@@ -86,85 +165,81 @@ def face_shape_sort(user_points_array,style_dir_path,n=10):
 
     img_name_list=os.listdir(style_dir_path)
 
-    L=[]
+    img_full_path_list=[]
     for img_name in img_name_list:
         img_full_path=os.path.join(style_dir_path,img_name)
-        L.append(img_full_path)
+        img_full_path_list.append(img_full_path)
 
-    D=[]
+    path_distance_list=[]
 
-    for img_full_path in L:
+    for img_full_path in img_full_path_list:
         try:
             # print(counter)
             # counter=counter+1
             points_array=np.array(Dict[img_full_path])
 
             distance= np.mean(np.square(points_array-user_points_array))
-            D.append([img_full_path,distance])
+            path_distance_list.append([img_full_path,distance])
         except:
             pass
     
-    D.sort(key=lambda x:x[1])
-    return [e[0] for e in D[:n]]
+    path_distance_list.sort(key=lambda x:x[1])
+    return [e[0] for e in path_distance_list[:n]]
 
 def recommend(user_gender, user_image_array, user_prefer_vector=[0.5, 0.5, 0.5, 0.5, 0.5]):
-    user_face_type=get_face_type(user_gender,user_image_array)
+    user_face_type=predict_faceshape(user_gender,user_image_array)
     user_points_array= get_rotated_points_array(user_image_array)
 
-    style = recommend_hair(user_gender,user_face_type,user_prefer_vector)
+    style_list = recommend_hair(user_gender,user_face_type,user_prefer_vector)
 
-    if user_gender==0:
-        style_dir_path= 'database/man/' + style +'/'
-    else:
-        style_dir_path= 'database/woman/' + style +'/'
 
-    L = face_shape_sort(user_points_array, style_dir_path)
-    return L,user_face_type, style
+    for style in style_list:
+        if user_gender==0:
+            style_dir_path= 'database/man/' + style +'/'
+        else:
+            style_dir_path= 'database/woman/' + style +'/'
 
-def recommend_swapface_and_return_path(user_image_path, user_gender):
-    user_image_array = io.imread(user_image_path)
-    user_image_name = os.path.basename(user_image_path).split('.')[0]
+        one_style_recomend_image_list = face_shape_sort(user_points_array, style_dir_path, n=3)
 
-    if not os.path.exists('output/'):
-        os.mkdir('output/')
-    L,user_face_type , style =recommend(user_gender, user_image_array)
+        counter=0
+        for img_path in one_style_recomend_image_list:
+            #print(counter)
+            counter+=1
 
-    Generated_image_path =[]
-    counter=0
-    for img_path in L:
-        print(counter)
-        counter+=1
+            img= swap_face(img_path,user_img_path)
 
-        img= swap_face(img_path,user_image_path)
-        output_image_path = os.path.join('output/',user_image_name+\
-                                '_'+style+'_'+str(counter)+'.jpg')
-        #print(output_image_path)
-        io.imsave(output_image_path, img)
+            if(user_gender==0):
+                io.imsave('output/man/'+style+'/'+str(counter)+'.jpg',img)
+            else:
+                io.imsave('output/woman/'+style+'/'+str(counter)+'.jpg',img)
+    return style_list,user_face_type
 
-        Generated_image_path.append(output_image_path)
-        
-    return Generated_image_path, user_face_type, style
-        
 if __name__=='__main__':
-    '''debug for recommend_swapface_and_return_path'''
-    L, user_face_type , style = recommend_swapface_and_return_path('test_images/100.jpg',1)
+    # os.makedirs('output/man/')
+    # os.makedirs('output/woman/')
+    # for style in HAIR_MAN:
+    #     if(not os.path.exists('output/man/'+style+'/')):
+    #         os.makedirs('output/man/'+style+'/')
+    # for style in HAIR_WOMAN:
+    #     if(not os.path.exists('output/woman/'+style+'/')):
+    #         os.makedirs('output/woman/'+style+'/')
+    #debug for recommend
+    user_img_path='test_images/100.jpg'
+    user_img = io.imread(user_img_path)
+
+    style_list,user_face_type =recommend(1, user_img)
 
     print("User face type: "+user_face_type)
-    print("Totally "+str(len(L))+" pictures")
-    print(L,user_face_type, style)
+    print("recommend style"+str(style_list))
 
-    for e in L:
-        io.imshow(io.imread(e))
-        io.show()
-    '''debug for recommend'''
-    # user_img_path='test_images/100.jpg'
-    # user_img = io.imread(user_img_path)
 
-    # L,user_face_type , style =recommend(1, user_img)
+    user_img_path='test_images/52.jpg'
+    user_img = io.imread(user_img_path)
 
-    # print("User face type: "+user_face_type)
-    # print("Totally "+str(len(L))+" pictures")
-    # print(L,user_face_type, style)
+    style_list,user_face_type =recommend(0, user_img)
+
+    print("User face type: "+user_face_type)
+    print("recommend style"+str(style_list))
 
     #debug for face_shape_sort
 

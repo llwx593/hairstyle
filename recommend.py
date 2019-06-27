@@ -4,7 +4,8 @@ from skimage import io
 import numpy as np
 import json
 
-from get_face_type import get_face_type
+# from get_face_type import get_face_type
+from predict_faceshape import predict_faceshape
 from get_face_points import get_rotated_points_array
 #debug
 from face_swap import swap_face
@@ -40,17 +41,22 @@ def recommend_hair(user_gender,user_face_type,\
     else:
         vect1= SHAPE_TO_HAIR_DICT_WOMAN[user_face_type]
     
-    recommend_vect=[] #final recommend 
-    index =0
-    for i in range(len(vect1)):
-        recommend_vect.append(vect1[i]+ user_prefer_vector[i])
-        if recommend_vect[i]>recommend_vect[index]:
-            index=i
+    # recommend_vect=[] #final recommend 
+    # index =0
+    # for i in range(len(vect1)):
+    #     recommend_vect.append(vect1[i]+ user_prefer_vector[i])
+    #     if recommend_vect[i]>recommend_vect[index]:
+    #         index=i
+    index = list(range(len(vect1)))
+    L = list(zip(vect1,index))              #[(0.3,1),...]
+    L.sort(key = lambda x:x[0])     
+    sorted_index = [e[1] for e in L]
+    
     if user_gender==0:
-        return HAIR_MAN[index]
+        return [HAIR_MAN[index] for index in sorted_index]
     else:
-        return HAIR_WOMAN[index]
-        
+        return [HAIR_WOMAN[index] for index in sorted_index]
+
 def load_json(style_dir_path):
 #得到数据库中的图片的脸型并存储
     data_path=os.path.join(style_dir_path,'data.json')
@@ -86,85 +92,112 @@ def face_shape_sort(user_points_array,style_dir_path,n=10):
 
     img_name_list=os.listdir(style_dir_path)
 
-    L=[]
+    img_full_path_list=[]
     for img_name in img_name_list:
         img_full_path=os.path.join(style_dir_path,img_name)
-        L.append(img_full_path)
+        img_full_path_list.append(img_full_path)
 
-    D=[]
+    path_distance_list=[]
 
-    for img_full_path in L:
+    for img_full_path in img_full_path_list:
         try:
             # print(counter)
             # counter=counter+1
             points_array=np.array(Dict[img_full_path])
 
             distance= np.mean(np.square(points_array-user_points_array))
-            D.append([img_full_path,distance])
+            path_distance_list.append([img_full_path,distance])
         except:
             pass
     
-    D.sort(key=lambda x:x[1])
-    return [e[0] for e in D[:n]]
+    path_distance_list.sort(key=lambda x:x[1])
+    return [e[0] for e in path_distance_list[:n]]
 
-def recommend(user_gender, user_image_array, user_prefer_vector=[0.5, 0.5, 0.5, 0.5, 0.5]):
-    user_face_type=get_face_type(user_gender,user_image_array)
+def random_code():
+    s = ''
+    for i in range(8):
+        s += chr(48+np.random.randint(0,10))
+    return s
+
+def make_generated_img_dir(base64,gender):
+    try:
+        os.makedirs('output/0/')
+        os.makedirs('output/1/')
+    except:
+        pass
+    if(gender == 0):
+        for style in HAIR_MAN:
+            if(not os.path.exists('output/0/'+base64+'/'+style+'/')):
+                os.makedirs('output/0/'+base64+'/'+style+'/')
+    else:
+        for style in HAIR_WOMAN:
+            if(not os.path.exists('output/1/'+base64+'/'+style+'/')):
+                os.makedirs('output/1/'+base64+'/'+style+'/')
+
+def recommend(user_image_path, user_gender, user_prefer_vector=[0.5, 0.5, 0.5, 0.5, 0.5]):
+    number = 3
+    user_image_array = io.imread(user_image_path)
+    user_face_type=predict_faceshape(user_gender,user_image_array)
     user_points_array= get_rotated_points_array(user_image_array)
 
-    style = recommend_hair(user_gender,user_face_type,user_prefer_vector)
+    style_list = recommend_hair(user_gender,user_face_type,user_prefer_vector)
 
-    if user_gender==0:
-        style_dir_path= 'database/man/' + style +'/'
-    else:
-        style_dir_path= 'database/woman/' + style +'/'
+    base64 = random_code() #用户编码
+    make_generated_img_dir(base64,user_gender)
+    
+    '''生成换脸效果图，并存储到相应目录里'''
+    for style in style_list:
+        if user_gender==0:
+            style_dir_path= 'database/man/' + style +'/'
+        else:
+            style_dir_path= 'database/woman/' + style +'/'
 
-    L = face_shape_sort(user_points_array, style_dir_path)
-    return L,user_face_type, style
+        one_style_recomend_image_list = face_shape_sort(user_points_array, style_dir_path, n=number)
 
-def recommend_swapface_and_return_path(user_image_path, user_gender):
-    user_image_array = io.imread(user_image_path)
-    user_image_name = os.path.basename(user_image_path).split('.')[0]
+        counter=0
 
-    if not os.path.exists('output/'):
-        os.mkdir('output/')
-    L,user_face_type , style =recommend(user_gender, user_image_array)
+        path1_man ='output/0/'+base64+'/'+style+'/'
+        path1_woman ='output/1/'+base64+'/'+style+'/'
+        for img_path in one_style_recomend_image_list:
+            #print(counter)
+            counter+=1
 
-    Generated_image_path =[]
-    counter=0
-    for img_path in L:
-        print(counter)
-        counter+=1
+            img= swap_face(img_path,user_image_path)
 
-        img= swap_face(img_path,user_image_path)
-        output_image_path = os.path.join('output/',user_image_name+\
-                                '_'+style+'_'+str(counter)+'.jpg')
-        #print(output_image_path)
-        io.imsave(output_image_path, img)
+            if(user_gender==0):
+                io.imsave(path1_man+str(counter)+'.jpg',img)
+            else:
+                io.imsave(path1_woman+str(counter)+'.jpg',img)
+    '''服务器返回json字符串'''
+    #'{"number": 3,"faceshape": "圆脸","base64": "abcdefgijk","style": ["潮流","烫发","背头","短发","长发"]}'
+    py_dic = {}
+    py_dic['number']=number
+    py_dic['faceshape'] = user_face_type
+    py_dic['base64'] = base64
+    py_dic['style'] = style_list
+    
+    return json.dumps(py_dic)
 
-        Generated_image_path.append(output_image_path)
-        
-    return Generated_image_path, user_face_type, style
-        
 if __name__=='__main__':
-    '''debug for recommend_swapface_and_return_path'''
-    L, user_face_type , style = recommend_swapface_and_return_path('test_images/100.jpg',1)
+    #print(random_code())
+    
+    #debug for recommend
+    #girl
+    user_img_path='test_images/100.jpg'
+    user_img = io.imread(user_img_path)
 
-    print("User face type: "+user_face_type)
-    print("Totally "+str(len(L))+" pictures")
-    print(L,user_face_type, style)
+    json_data =recommend(user_img_path,1)
 
-    for e in L:
-        io.imshow(io.imread(e))
-        io.show()
-    '''debug for recommend'''
-    # user_img_path='test_images/100.jpg'
+    print(json_data)
+
+    # #boy
+    # user_img_path='test_images/52.jpg'
     # user_img = io.imread(user_img_path)
 
-    # L,user_face_type , style =recommend(1, user_img)
+    # style_list,user_face_type =recommend(user_img_path, 0)
 
     # print("User face type: "+user_face_type)
-    # print("Totally "+str(len(L))+" pictures")
-    # print(L,user_face_type, style)
+    # print("recommend style"+str(style_list))
 
     #debug for face_shape_sort
 

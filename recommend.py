@@ -113,66 +113,91 @@ def face_shape_sort(user_points_array,style_dir_path,n=10):
     path_distance_list.sort(key=lambda x:x[1])
     return [e[0] for e in path_distance_list[:n]]
 
-def recommend(user_gender, user_image_array, user_prefer_vector=[0.5, 0.5, 0.5, 0.5, 0.5]):
+def random_code():
+    s = ''
+    for i in range(8):
+        s += chr(48+np.random.randint(0,10))
+    return s
+
+def make_generated_img_dir(base64,gender):
+    try:
+        os.makedirs('output/0/')
+        os.makedirs('output/1/')
+    except:
+        pass
+    if(gender == 0):
+        for style in HAIR_MAN:
+            if(not os.path.exists('output/0/'+base64+'/'+style+'/')):
+                os.makedirs('output/0/'+base64+'/'+style+'/')
+    else:
+        for style in HAIR_WOMAN:
+            if(not os.path.exists('output/1/'+base64+'/'+style+'/')):
+                os.makedirs('output/1/'+base64+'/'+style+'/')
+
+def recommend(user_image_path, user_gender, user_prefer_vector=[0.5, 0.5, 0.5, 0.5, 0.5]):
+    number = 3
+    user_image_array = io.imread(user_image_path)
     user_face_type=predict_faceshape(user_gender,user_image_array)
     user_points_array= get_rotated_points_array(user_image_array)
 
     style_list = recommend_hair(user_gender,user_face_type,user_prefer_vector)
 
-
+    base64 = random_code() #用户编码
+    make_generated_img_dir(base64,user_gender)
+    
+    '''生成换脸效果图，并存储到相应目录里'''
     for style in style_list:
         if user_gender==0:
             style_dir_path= 'database/man/' + style +'/'
         else:
             style_dir_path= 'database/woman/' + style +'/'
 
-        one_style_recomend_image_list = face_shape_sort(user_points_array, style_dir_path, n=3)
+        one_style_recomend_image_list = face_shape_sort(user_points_array, style_dir_path, n=number)
 
         counter=0
+
+        path1_man ='output/0/'+base64+'/'+style+'/'
+        path1_woman ='output/1/'+base64+'/'+style+'/'
         for img_path in one_style_recomend_image_list:
             #print(counter)
             counter+=1
 
-            img= swap_face(img_path,user_img_path)
+            img= swap_face(img_path,user_image_path)
 
             if(user_gender==0):
-                io.imsave('output/man/'+style+'/'+str(counter)+'.jpg',img)
+                io.imsave(path1_man+str(counter)+'.jpg',img)
             else:
-                io.imsave('output/woman/'+style+'/'+str(counter)+'.jpg',img)
-    return style_list,user_face_type
+                io.imsave(path1_woman+str(counter)+'.jpg',img)
+    '''服务器返回json字符串'''
+    #'{"number": 3,"faceshape": "圆脸","base64": "abcdefgijk","style": ["潮流","烫发","背头","短发","长发"]}'
+    py_dic = {}
+    py_dic['number']=number
+    py_dic['faceshape'] = user_face_type
+    py_dic['base64'] = base64
+    py_dic['style'] = style_list
+    
+    return json.dumps(py_dic)
 
 if __name__=='__main__':
-    #make dir
-    try:
-        os.makedirs('output/man/')
-        os.makedirs('output/woman/')
-    except:
-        pass
-    for style in HAIR_MAN:
-        if(not os.path.exists('output/man/'+style+'/')):
-            os.makedirs('output/man/'+style+'/')
-    for style in HAIR_WOMAN:
-        if(not os.path.exists('output/woman/'+style+'/')):
-            os.makedirs('output/woman/'+style+'/')
-
+    #print(random_code())
+    
     #debug for recommend
     #girl
     user_img_path='test_images/100.jpg'
     user_img = io.imread(user_img_path)
 
-    style_list,user_face_type =recommend(1, user_img)
+    json_data =recommend(user_img_path,1)
 
-    print("User face type: "+user_face_type)
-    print("recommend style"+str(style_list))
+    print(json_data)
 
-    #boy
-    user_img_path='test_images/52.jpg'
-    user_img = io.imread(user_img_path)
+    # #boy
+    # user_img_path='test_images/52.jpg'
+    # user_img = io.imread(user_img_path)
 
-    style_list,user_face_type =recommend(0, user_img)
+    # style_list,user_face_type =recommend(user_img_path, 0)
 
-    print("User face type: "+user_face_type)
-    print("recommend style"+str(style_list))
+    # print("User face type: "+user_face_type)
+    # print("recommend style"+str(style_list))
 
     #debug for face_shape_sort
 

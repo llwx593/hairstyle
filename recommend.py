@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from skimage import io
+from skimage import io,transform
 import numpy as np
 import json
 
@@ -8,7 +8,7 @@ import json
 from predict_faceshape import predict_faceshape
 from get_face_points import get_rotated_points_array
 #debug
-from face_swap import swap_face
+from face_swap import swap_face,swap_face_inner
 import cv2
 
 HAIR_MAN=['短发','长发','背头','烫发','潮流']
@@ -135,17 +135,26 @@ def make_generated_img_dir(base64,gender):
                 os.makedirs('output/1/'+base64+'/'+style+'/')
 
 def recommend(user_image_path, user_gender, user_prefer_vector=[0.5, 0.5, 0.5, 0.5, 0.5]):
+    import time
+    print(time.time())
     number = 3
     user_image_array = io.imread(user_image_path)
     user_face_type=predict_faceshape(user_gender,user_image_array)
+    # user_face_type = '圆脸'
+    print(user_face_type)
+    print('get shape',time.time())
+
     user_points_array= get_rotated_points_array(user_image_array)
 
     style_list = recommend_hair(user_gender,user_face_type,user_prefer_vector)
+    print('get style list',time.time())
 
     base64 = random_code() #用户编码
     make_generated_img_dir(base64,user_gender)
+    print('gen dir',time.time())
     
     '''生成换脸效果图，并存储到相应目录里'''
+
     for style in style_list:
         if user_gender==0:
             style_dir_path= 'database/man/' + style +'/'
@@ -153,6 +162,7 @@ def recommend(user_image_path, user_gender, user_prefer_vector=[0.5, 0.5, 0.5, 0
             style_dir_path= 'database/woman/' + style +'/'
 
         one_style_recomend_image_list = face_shape_sort(user_points_array, style_dir_path, n=number)
+        print('face shape sort',time.time())
 
         counter=0
 
@@ -162,12 +172,17 @@ def recommend(user_image_path, user_gender, user_prefer_vector=[0.5, 0.5, 0.5, 0
             #print(counter)
             counter+=1
 
-            img= swap_face(img_path,user_image_path)
+            if (style==style_list[0]) and (img_path==one_style_recomend_image_list[0]):
+                img, im2, landmarks2= swap_face(img_path,user_image_path)
+            else:
+                img = swap_face_inner(img_path,im2,landmarks2)
 
             if(user_gender==0):
                 io.imsave(path1_man+str(counter)+'.jpg',img)
             else:
                 io.imsave(path1_woman+str(counter)+'.jpg',img)
+        print('one style gen pic',time.time())
+        
     '''服务器返回json字符串'''
     #'{"number": 3,"faceshape": "圆脸","base64": "abcdefgijk","style": ["潮流","烫发","背头","短发","长发"]}'
     py_dic = {}

@@ -187,9 +187,39 @@ def warp_im(im, M, dshape):
                    flags=cv2.WARP_INVERSE_MAP)
     return output_im
 
-def swap_face(model_img_path1,user_img_path2):
-    im1, landmarks1 = read_im_and_landmarks(model_img_path1)
-    im2, landmarks2 = read_im_and_landmarks(user_img_path2)
+def swap_face(model_img_path,user_img_path):
+    im1, landmarks1 = read_im_and_landmarks(model_img_path)
+    im2, landmarks2 = read_im_and_landmarks(user_img_path)
+
+    M = transformation_from_points(landmarks1[ALIGN_POINTS],
+                                   landmarks2[ALIGN_POINTS])
+
+    warped_im2 = warp_im(im2, M, im1.shape)
+
+    mask = get_face_mask(im2, landmarks2)
+    warped_mask = warp_im(mask, M, im1.shape)
+    combined_mask = numpy.min([get_face_mask(im1, landmarks1), warped_mask],
+                              axis=0)
+    combined_mask=combined_mask.astype(np.uint8)*255
+
+    #warped_corrected_im2 = correct_colours(im1, warped_im2, landmarks1)
+
+#可以不用
+#    output_raw = im1 * (1 - combined_mask/255) + warped_im2 * (combined_mask/255)
+#    output_raw=output_raw.astype(np.uint8)
+#    cv2.imshow('output_raw',output_raw)
+
+    combined_mask_temp=combined_mask[:,:,0]
+    i_list,j_list=np.where(combined_mask_temp==255)
+    i=(i_list.max()+i_list.min())//2
+    j=(j_list.max()+j_list.min())//2
+    output = cv2.seamlessClone(warped_im2, im1, combined_mask, (j,i), cv2.NORMAL_CLONE)
+
+    #return output
+    return cv2.cvtColor(output, cv2.COLOR_BGR2RGB),im2,landmarks2
+
+def swap_face_inner(model_img_path,im2,landmarks2):
+    im1, landmarks1 = read_im_and_landmarks(model_img_path)
 
     M = transformation_from_points(landmarks1[ALIGN_POINTS],
                                    landmarks2[ALIGN_POINTS])
@@ -217,7 +247,6 @@ def swap_face(model_img_path1,user_img_path2):
 
     #return output
     return cv2.cvtColor(output, cv2.COLOR_BGR2RGB)
-
 if __name__=='__main__':
     user_image_path='test_images/55.jpg'
 
